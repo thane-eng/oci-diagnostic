@@ -11,7 +11,7 @@ import Link from 'next/link'
 const ELEMENTS: Element[] = ['IW', 'CUR', 'CHA', 'TRU', 'COM']
 
 function ResultsContent() {
-  const params = useSearchParams()
+  const params = useSearchParams()h
 
   const name = params.get('name') ?? 'Respondent'
   const role = params.get('role') ?? ''
@@ -28,7 +28,7 @@ function ResultsContent() {
   }
 
   const primary = archetypes[primaryKey]
-  const secondary = secondaryKey && secondaryKey !== '' ? archetypes[secondaryKey] : null
+    const secondary = secondaryKey ? archetypes[secondaryKey] : null
 
   // Sort elements for display (lowest first = most attention needed)
   const sortedElements = [...ELEMENTS].sort((a, b) => elementScores[a] - elementScores[b])
