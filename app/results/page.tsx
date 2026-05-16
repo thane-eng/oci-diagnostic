@@ -11,7 +11,7 @@ import Link from 'next/link'
 const ELEMENTS: Element[] = ['IW', 'CUR', 'CHA', 'TRU', 'COM']
 
 function ResultsContent() {
-  const params = useSearchParams()h
+  const params = useSearchParams()
 
   const name = params.get('name') ?? 'Respondent'
   const role = params.get('role') ?? ''
