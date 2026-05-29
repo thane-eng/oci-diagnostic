@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { scoredQuestions, forcedChoiceQuestions, ROLE_OPTIONS } from '@/lib/questions'
 import { calculateScores } from '@/lib/scoring'
 
@@ -17,6 +17,9 @@ const QUESTIONS_PER_PAGE = 1
 
 export default function SurveyPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const company = searchParams.get('company') ?? ''
+  const engagementId = searchParams.get('engagement_id') ?? ''
 
   const [phase, setPhase] = useState<Phase>('profile')
   const [profile, setProfile] = useState<Profile>({ name: '', role: '', department: '' })
@@ -96,6 +99,21 @@ export default function SurveyPage() {
           TRU: String(result.elementScores.TRU),
           COM: String(result.elementScores.COM),
         })
+        fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: profile.name,
+            role: profile.role,
+            department: profile.department,
+            company,
+            engagementId,
+            primary: result.primaryArchetype,
+            secondary: result.secondaryArchetype ?? '',
+            scores: result.elementScores,
+            answers: { ...scores, ...Object.fromEntries(Object.entries(newChoices).map(([k, v]) => [k, v])) },
+          }),
+        }).catch(console.error)
         router.push(`/results?${params.toString()}`)
       }
     }
