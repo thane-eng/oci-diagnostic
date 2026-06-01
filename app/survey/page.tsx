@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { scoredQuestions, forcedChoiceQuestions, ROLE_OPTIONS } from '@/lib/questions'
 import { calculateScores } from '@/lib/scoring'
 
@@ -15,7 +16,7 @@ interface Profile {
 
 const QUESTIONS_PER_PAGE = 1
 
-export default function SurveyPage() {
+function SurveyPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const company = searchParams.get('company') ?? ''
@@ -23,16 +24,15 @@ export default function SurveyPage() {
 
   const [phase, setPhase] = useState<Phase>('profile')
   const [profile, setProfile] = useState<Profile>({ name: '', role: '', department: '' })
-  const [currentQ, setCurrentQ] = useState(0)          // index within current phase
+  const [currentQ, setCurrentQ] = useState(0)
   const [scores, setScores] = useState<Record<number, number>>({})
   const [choices, setChoices] = useState<Record<number, 'A' | 'B'>>({})
   const [selected, setSelected] = useState<number | 'A' | 'B' | null>(null)
 
-  const totalScoredQ = scoredQuestions.length      // 20
-  const totalForcedQ = forcedChoiceQuestions.length // 4
-  const totalQ = totalScoredQ + totalForcedQ        // 24
+  const totalScoredQ = scoredQuestions.length
+  const totalForcedQ = forcedChoiceQuestions.length
+  const totalQ = totalScoredQ + totalForcedQ
 
-  // Overall progress (0–100)
   const progressPercent = phase === 'profile'
     ? 0
     : phase === 'survey'
@@ -67,7 +67,6 @@ export default function SurveyPage() {
         setCurrentQ(currentQ + 1)
         setSelected(null)
       } else {
-        // Move to forced choice
         setPhase('forcedchoice')
         setCurrentQ(0)
         setSelected(null)
@@ -81,11 +80,31 @@ export default function SurveyPage() {
         setCurrentQ(currentQ + 1)
         setSelected(null)
       } else {
-        // Calculate results and navigate
         const result = calculateScores({
           scores: { ...scores },
           forcedChoices: newChoices,
         })
+
+        fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: profile.name,
+            role: profile.role,
+            department: profile.department,
+            company,
+            engagementId,
+            primary: result.primaryArchetype,
+            secondary: result.secondaryArchetype ?? '',
+            scores: result.elementScores,
+            answers: {
+              ...scores,
+              ...Object.fromEntries(
+                Object.entries(newChoices).map(([k, v]) => [k, v])
+              ),
+            },
+          }),
+        }).catch(console.error)
 
         const params = new URLSearchParams({
           name: profile.name,
@@ -99,21 +118,6 @@ export default function SurveyPage() {
           TRU: String(result.elementScores.TRU),
           COM: String(result.elementScores.COM),
         })
-        fetch('/api/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: profile.name,
-            role: profile.role,
-            department: profile.department,
-            company,
-            engagementId,
-            primary: result.primaryArchetype,
-            secondary: result.secondaryArchetype ?? '',
-            scores: result.elementScores,
-            answers: { ...scores, ...Object.fromEntries(Object.entries(newChoices).map(([k, v]) => [k, v])) },
-          }),
-        }).catch(console.error)
         router.push(`/results?${params.toString()}`)
       }
     }
@@ -140,7 +144,6 @@ export default function SurveyPage() {
     }
   }
 
-  // ── PROFILE PHASE ──
   if (phase === 'profile') {
     return (
       <div className="min-h-screen bg-[#0f1f30] flex flex-col">
@@ -211,7 +214,6 @@ export default function SurveyPage() {
     )
   }
 
-  // ── SURVEY PHASE ──
   if (phase === 'survey') {
     const q = scoredQuestions[currentQ]
     const questionNumber = currentQ + 1
@@ -221,7 +223,6 @@ export default function SurveyPage() {
         <TopBar progress={progressPercent} />
         <div className="flex-1 flex items-start justify-center px-4 py-10">
           <div className="w-full max-w-2xl">
-            {/* Question counter */}
             <div className="flex items-center justify-between mb-6">
               <span className="text-white/40 text-sm font-medium">
                 Question {questionNumber} of {totalQ}
@@ -234,12 +235,10 @@ export default function SurveyPage() {
               </button>
             </div>
 
-            {/* Question text */}
             <h2 className="text-xl md:text-2xl font-medium text-white leading-snug mb-8">
               {q.text}
             </h2>
 
-            {/* Answer options */}
             <div className="space-y-3 mb-10">
               {q.options.map(opt => (
                 <button
@@ -282,7 +281,6 @@ export default function SurveyPage() {
     )
   }
 
-  // ── FORCED CHOICE PHASE ──
   const fc = forcedChoiceQuestions[currentQ]
   const questionNumber = totalScoredQ + currentQ + 1
 
@@ -350,6 +348,14 @@ export default function SurveyPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SurveyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0f1f30]" />}>
+      <SurveyPageInner />
+    </Suspense>
   )
 }
 
