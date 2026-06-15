@@ -10,6 +10,22 @@ import Link from 'next/link'
 
 const ELEMENTS: Element[] = ['IW', 'CUR', 'CHA', 'TRU', 'COM']
 
+function calcCES(scores: Record<Element, number>) {
+  const raw = scores.IW + scores.CUR + scores.CHA + scores.TRU + scores.COM
+  return Math.round((raw - 20) / 60 * 100)
+}
+
+function calcElementCES(score: number) {
+  return Math.round((score - 4) / 12 * 100)
+}
+
+function getCesBand(score: number) {
+  if (score < 25) return { label: 'Lie Economy', barColor: '#EF4444', bg: 'bg-red-900/20', border: 'border-red-500/20', text: 'text-red-400' }
+  if (score < 50) return { label: 'Transitional', barColor: '#F59E0B', bg: 'bg-amber-900/20', border: 'border-amber-500/20', text: 'text-amber-400' }
+  if (score < 75) return { label: 'Emerging Courage Economy', barColor: '#60A5FA', bg: 'bg-blue-900/20', border: 'border-blue-500/20', text: 'text-blue-400' }
+  return { label: 'Courage Economy', barColor: '#34D399', bg: 'bg-emerald-900/20', border: 'border-emerald-500/20', text: 'text-emerald-400' }
+}
+
 function ResultsContent() {
   const params = useSearchParams()
 
@@ -28,7 +44,10 @@ function ResultsContent() {
   }
 
   const primary = archetypes[primaryKey]
-    const secondary = secondaryKey ? archetypes[secondaryKey] : null
+  const secondary = secondaryKey ? archetypes[secondaryKey] : null
+
+  const ces = calcCES(elementScores)
+  const cesBand = getCesBand(ces)
 
   // Sort elements for display (lowest first = most attention needed)
   const sortedElements = [...ELEMENTS].sort((a, b) => elementScores[a] - elementScores[b])
@@ -62,6 +81,54 @@ function ResultsContent() {
           <p className="text-white/30 text-xs">
             Completed {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
+        </div>
+
+        {/* Courage Economy Score */}
+        <div className="mb-10">
+          <p className="text-white/40 text-xs font-semibold tracking-widest uppercase mb-3">
+            Courage Economy Score
+          </p>
+          <div className={`${cesBand.bg} border ${cesBand.border} rounded-2xl p-8`}>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className={`text-7xl font-bold ${cesBand.text} leading-none mb-3`}>
+                  {ces}
+                </div>
+                <div className={`inline-block text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full border ${cesBand.border} ${cesBand.text}`}>
+                  {cesBand.label}
+                </div>
+              </div>
+              <div className="text-right text-white/30 text-xs leading-relaxed space-y-1 pt-1">
+                <div className="text-red-400/70">0–24 · Lie Economy</div>
+                <div className="text-amber-400/70">25–49 · Transitional</div>
+                <div className="text-blue-400/70">50–74 · Emerging Courage Economy</div>
+                <div className="text-emerald-400/70">75–100 · Courage Economy</div>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="bg-white/10 rounded-full h-2 mb-6">
+              <div
+                className="rounded-full h-2 transition-all duration-700"
+                style={{ width: `${ces}%`, backgroundColor: cesBand.barColor }}
+              />
+            </div>
+            {/* Element subscores */}
+            <div className="grid grid-cols-5 gap-2 mb-4">
+              {ELEMENTS.map(el => {
+                const elCes = calcElementCES(elementScores[el])
+                const elBand = getCesBand(elCes)
+                return (
+                  <div key={el} className={`${elBand.bg} border ${elBand.border} rounded-lg p-3 text-center`}>
+                    <div className={`text-xl font-bold ${elBand.text} leading-none mb-1`}>{elCes}</div>
+                    <div className="text-white/40 text-xs">{getElementLabel(el)}</div>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-white/25 text-xs">
+              Score of 0–100 derived from all 20 scored questions. Re-assess in 6 months to measure progress.
+            </p>
+          </div>
         </div>
 
         {/* Primary archetype */}
